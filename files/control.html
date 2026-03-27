@@ -8,18 +8,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
-    --border: rgba(255,255,255,0.08); --border-active: rgba(255,255,255,0.2);
-    --text: #e6edf3; --text-muted: #7d8590; --text-dim: #444c56;
-    --accent: #f0a500; --accent-dim: rgba(240,165,0,0.12); --accent-border: rgba(240,165,0,0.4);
-    --green: #3fb950; --green-dim: rgba(63,185,80,0.12);
-    --red: #f85149; --red-dim: rgba(248,81,73,0.12);
-    --blue: #58a6ff; --blue-dim: rgba(88,166,255,0.1);
-    --purple: #bc8cff; --purple-dim: rgba(188,140,255,0.1);
+    --bg: #f8f9fa; --surface: #ffffff; --surface2: #f1f3f5;
+    --border: rgba(0,0,0,0.1); --border-active: rgba(0,0,0,0.25);
+    --text: #1a1a2e; --text-muted: #555770; --text-dim: #9a9aaa;
+    --accent: #d4860a; --accent-dim: rgba(212,134,10,0.1); --accent-border: rgba(212,134,10,0.4);
+    --green: #2a7a3b; --green-dim: rgba(42,122,59,0.1);
+    --red: #c0392b; --red-dim: rgba(192,57,43,0.1);
+    --blue: #2266cc; --blue-dim: rgba(34,102,204,0.1);
+    --purple: #6b3fa0; --purple-dim: rgba(107,63,160,0.1);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; font-weight: 300; min-height: 100vh; }
-  .header { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(13,17,23,0.97); backdrop-filter: blur(8px); z-index: 20; }
+  .header { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(248,249,250,0.97); backdrop-filter: blur(8px); z-index: 20; }
   .header-left { display: flex; align-items: center; gap: 12px; }
   .header-title { font-family: 'Noto Serif TC', serif; font-size: 15px; color: var(--accent); }
   .ctrl-badge { font-size: 10px; padding: 3px 8px; border-radius: 3px; background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); letter-spacing: 0.06em; }
