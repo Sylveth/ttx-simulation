@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情境模擬推演 — 參演者</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f9fa; --surface: #ffffff; --surface2: #f1f3f5;
+    --border: rgba(0,0,0,0.1); --border-active: rgba(0,0,0,0.25);
+    --text: #1a1a2e; --text-muted: #555770; --text-dim: #9a9aaa;
+    --accent: #d4860a; --accent-dim: rgba(212,134,10,0.1); --accent-border: rgba(212,134,10,0.4);
+    --green: #2a7a3b; --green-dim: rgba(42,122,59,0.1);
+    --red: #c0392b; --blue: #2266cc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; font-weight: 300; min-height: 100vh; padding-bottom: 60px; }
+  .header { border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(248,249,250,0.97); backdrop-filter: blur(8px); z-index: 10; }
+  .header-title { font-family: 'Noto Serif TC', serif; font-size: 15px; letter-spacing: 0.05em; color: var(--accent); }
+  .header-status { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+  .phase-strip { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .phase-strip::-webkit-scrollbar { display: none; }
+  .phase-item { flex: 1; min-width: 80px; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-dim); border-right: 1px solid var(--border); position: relative; }
+  .phase-item.active { color: var(--accent); background: var(--accent-dim); }
+  .phase-item.done { color: var(--green); }
+  .phase-item.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .phase-num { font-size: 16px; font-weight: 500; display: block; margin-bottom: 2px; }
+  .main { max-width: 680px; margin: 0 auto; padding: 24px 20px; }
+  .scenario-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+  .scenario-header { padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .scenario-tag { font-size: 10px; padding: 3px 8px; border-radius: 3px; font-weight: 500; letter-spacing: 0.05em; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); }
+  .scenario-body { padding: 16px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+  .scenario-questions { padding: 0 16px 16px; }
+  .q-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+  .q-item { font-size: 13px; padding: 6px 0 6px 12px; border-left: 2px solid var(--accent-border); margin-bottom: 6px; line-height: 1.6; }
+  .section-title { font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 12px; }
+  .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+  .role-btn { padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); font-family: 'Noto Sans TC', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; text-align: left; }
+  .role-btn:hover { border-color: var(--border-active); color: var(--text); background: var(--surface2); }
+  .role-btn.selected { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .role-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .role-name { font-weight: 500; font-size: 13px; }
+  .role-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; color: var(--text); font-family: 'Noto Sans TC', sans-serif; font-size: 14px; font-weight: 300; line-height: 1.7; resize: vertical; min-height: 100px; transition: border-color 0.15s; }
+  textarea:focus { outline: none; border-color: var(--accent-border); }
+  textarea::placeholder { color: var(--text-dim); }
+  .submit-btn { width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-family: 'Noto Sans TC', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .submit-btn:hover { background: #ffb700; }
+  .submit-btn:disabled { background: var(--surface2); color: var(--text-dim); cursor: not-allowed; }
+  .waiting-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; text-align: center; }
+  .waiting-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+  .waiting-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+  .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .player-chip { padding: 8px 10px; border-radius: 5px; font-size: 12px; display: flex; align-items: center; gap: 6px; background: var(--green-dim); border: 1px solid rgba(63,185,80,0.3); color: var(--green); }
+  .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .next-card { background: var(--surface); border: 1px solid var(--accent-border); border-radius: 8px; padding: 20px; margin-top: 16px; text-align: left; }
+  .next-label { font-size: 11px; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .next-text { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+  .alert-success { padding: 10px 14px; border-radius: 5px; font-size: 13px; margin-bottom: 12px; background: var(--green-dim); border: 1px solid rgba(63,185,80,0.3); color: var(--green); }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .final-card { background: var(--surface); border: 1px solid var(--accent-border); border-radius: 8px; padding: 32px; text-align: center; }
+  .final-title { font-size: 20px; font-weight: 500; color: var(--accent); margin-bottom: 10px; }
+  .final-sub { font-size: 13px; color: var(--text-muted); line-height: 1.8; }
+  .res-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .res-card:hover { border-color: var(--border-active); }
+  .res-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .res-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .res-card-name { font-size: 13px; font-weight: 500; }
+  .res-card-kwh { font-size: 12px; color: var(--accent); font-weight: 500; }
+  .res-card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-bottom: 6px; }
+  .res-card-qty { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .res-card-qty label { font-size: 11px; color: var(--text-muted); }
+  .qty-input { width: 60px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 13px; text-align: center; }
+  .qty-input:focus { outline: none; border-color: var(--accent-border); }
+  .res-custom { background: var(--surface); border: 1px dashed var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  .res-custom-title { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .res-custom-row { display: grid; grid-template-columns: 1fr 100px; gap: 8px; margin-bottom: 6px; }
+  .res-custom-row input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 13px; font-family: 'Noto Sans TC', sans-serif; }
+  .res-custom-row input:focus { outline: none; border-color: var(--accent-border); }
+  .kwh-total { font-size: 12px; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 5px; padding: 6px 10px; margin-bottom: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-title">颱風停電情境推演</div>
+  <div class="header-status"><div class="dot" id="connDot"></div><span id="headerStatus">連線中...</span></div>
+</div>
+<div class="phase-strip" id="phaseStrip"></div>
+<div class="main"><div id="appContent"><div style="text-align:center;padding:60px 20px;color:var(--text-muted)"><div class="spinner"></div>載入中...</div></div></div>
+
+<script>
+const FB_URL = 'https://ttxproject-382cf-default-rtdb.asia-southeast1.firebasedatabase.app/ttx-session.json';
+const POLL_MS = 3000;
+
+const ROLES = [
+  { id: 'local-gov', icon: '🏛', name: '地方政府代表', desc: '民生供電保障・災害應變',
+    resources: '可開放學校、活動中心作為供電點；掌握弱勢族群名單；有里長網絡；可申請國軍支援。本身不具備電力設備，需協調外部資源。',
+    prompts: {
+      p1: ['現在最優先要保障哪些場所的電力？','打算開放哪些公有場地給移動充電樁進駐？需要誰的同意？','有辦法在不等中央指令的情況下採取哪些行動？'],
+      p2: ['民間供電已撐了48小時，現在最需要向能源主管機關爭取什麼授權？','燃料補給如何協調？由誰負責、誰出錢？','弱勢族群與醫療依賴者的狀況如何？現在最急的是什麼？'],
+      p3: ['主幹線部分恢復，你打算如何協調再併網的時序？','民間已自主運作6天，你認為政府接下來的角色應該是什麼？','這次事件暴露了哪個制度漏洞？你會怎麼向中央反映？'],
+    }},
+  { id: 'energy-authority', icon: '⚡', name: '能源主管機關', desc: '政策框架・授權條件',
+    resources: '可發布緊急孤島運轉授權（行政命令）；掌握全區分散式能源場域資料；有跨部會協調機制。但行政命令需核決流程，現行電業法無明文緊急孤島授權程序。',
+    prompts: {
+      p1: ['緊急孤島運轉授權需要多少時間、哪個層級才能核准？','南鹽光150MW+20MWh歸台電管，你有辦法授權部分電力供周邊社區嗎？','現行法規最大的障礙是什麼？緊急狀況下是否有特別機制？'],
+      p2: ['孤島運轉已進行48小時，能做什麼來正式化或擴大這個授權？','哪些法規條文正在阻礙民間供電？你有辦法臨時豁免嗎？','燃料補給的協調責任落在誰身上？你能提供什麼資源或指示？'],
+      p3: ['再併網需要台電技術審查，這個流程現在能加快嗎？','這次緊急授權的經驗，你會建議納入哪些制度性修正？','民間業者反映哪些問題是你現在就可以解決的？'],
+    }},
+  { id: 'citizen-plant', icon: '☀️', name: '公民電廠代表', desc: '孤島供電節點啟動',
+    resources: '屋頂型光電30～100kW；配置儲能50～200kWh；白天持續發電。但現有設備多為併網型，電網斷電自動解聯，孤島運轉需授權且需技術人員在場。',
+    prompts: {
+      p1: ['在現有場域現在能提供多少kW？儲能有多少kWh？可以撐多少小時？','不需要任何授權，你現在能立刻做什麼？','孤島運轉後需要什麼授權？需要幾個小時？應該由誰操作？'],
+      p2: ['儲能電量還剩多少？以目前消耗速度還能撐多久？','你能跟鄰近的公民電廠或儲能業者串接嗎？需要什麼條件？','移動充電樁如果進駐，你能提供多少額外充電容量？'],
+      p3: ['連續供電6天後，你的設備狀況如何？有無損壞或效能下降？','你能自行執行再併網嗎？技術上需要什麼？授權上需要什麼？','未來要讓你的場域成為常態備援節點，制度上需要改變什麼？'],
+    }},
+  { id: 'microgrid', icon: '🔋', name: '微電網／儲能業者', desc: '儲能調度・技術支援',
+    resources: '電池儲能系統100kWh～數MWh；微電網控制器可自動調度；30分鐘內可切換孤島模式。需技術人員在場。',
+    prompts: {
+      p1: ['你的儲能系統目前電量多少kWh？高負載下能撐多少小時？','30分鐘內切換孤島模式——現在技術人員在場嗎？誰有授權讓你啟動？','能同時管理哪些電源？覆蓋範圍多大？'],
+      p2: ['電量剩多少？按現在的消耗速度，還能撐多久？','儲能需要補充，你能從哪裡充電？移動充電樁能幫你補充嗎？','如何協調使用其他場域儲能？'],
+      p3: ['設備連續運行6天，有沒有過熱、效能下降或需要維護的情況？','再併網的時候，技術上你需要做什麼準備？風險在哪？','要讓民間儲能業者成為常態緊急備援，制度上缺少什麼？'],
+    }},
+  { id: 'mobile-charge', icon: '🚐', name: '移動式充電業者', desc: '機動供電・緊急進駐',
+    resources: '移動充電樁每台30～60kWh；移動儲能車100～300kWh；數小時可抵達（視路況）。',
+    prompts: {
+      p1: ['你現在有幾台設備可以調動？總電量多少kWh？最快幾小時能到現場？','路況如何？交通上是否有阻塞的問題？','打算先去哪裡——醫院、學校還是社區活動中心？為什麼？'],
+      p2: ['你的電量消耗了多少？需要補充了嗎？誰來協調補充、誰出錢？','有沒有更多台設備可以調進來？調度的決定是你自己做還是需要等誰？','V2G放電的條件是否成立？現場有多少輛支援雙向充電？'],
+      p3: ['這6天移動調度的最大瓶頸是什麼——路況、電量、人力還是授權？','你能在不等政府指令的情況下自主決定去哪裡嗎？','移動充電要成為常態備援力量，補償機制和調度機制要怎麼設計？'],
+    }},
+  { id: 'scholar', icon: '📚', name: '學者', desc: '制度分析・法規質疑',
+    resources: '無直接操作資源，但可提供制度分析、法規解讀、跨國案例比較。可質疑其他角色決策的法律可行性與制度合理性。',
+    prompts: {
+      p1: ['從制度面來看，現在決策卡在哪裡——是技術問題、法規問題還是權責不清？','孤島運轉授權的法律依據是什麼？《電業法》有緊急豁免條款嗎？','觀察到誰在主導決策？這符合正式的權責劃分嗎？'],
+      p2: ['48小時後，你觀察到哪些跨部門衝突或推責現象？','民間自主行動和政府授權之間的張力在哪裡？誰應該主導？','有哪些決策在法律上是灰色地帶？這會產生什麼後果？'],
+      p3: ['整體來看，這次應變中制度設計最大的失靈點是什麼？','分散式能源是否真的增加了治理複雜度？','你會建議哪1～2項最優先的制度改革？'],
+    }},
+  { id: 'community', icon: '🏘', name: '社區代表', desc: '末端需求・居民視角',
+    resources: '代表停電區域的一般居民與社區組織。掌握社區內獨居老人、醫療依賴者名單；可動員社區志工；是資訊傳遞的最末端節點。',
+    prompts: {
+      p1: ['社區現在最急迫的需求是什麼——醫療設備、飲水、通訊還是照明？','你知道社區內有幾戶醫療依賴者？他們現在狀況如何？','你有辦法在不等政府的情況下組織社區互助嗎？'],
+      p2: ['已經停電48小時，社區的情緒和秩序如何？有沒有衝突或混亂？','充電資源不夠分，你們怎麼決定優先順序？誰說了算？','你收到來自地方政府或業者的資訊了嗎？還是完全沒有消息？'],
+      p3: ['停電7天，社區的承受極限在哪裡？','民間業者和政府的支援，哪些真的有幫到你們，哪些沒有？','未來社區要有更強的自救能力，需要什麼資源或制度支撐？'],
+    }},
+  { id: 'local-industry', icon: '🐟', name: '在地產業代表', desc: '冷鏈優先・自救聯盟',
+    resources: '漁電共生場域光電50～200kW；部分養殖場有柴油發電機。停電超過24小時魚貨損失開始累積，且現行法規無電力分享機制。',
+    prompts: {
+      p1: ['養殖場現在最緊急的用電需求是什麼？需要多少kW？','柴油發電機現在能啟動嗎？燃料可以撐多久？','不靠政府，你和鄰近業者能自己協調組成供電聯盟嗎？'],
+      p2: ['魚貨損失有多嚴重？再撐多久損失就無法挽回？','柴油快用完了——你能自己協調補給嗎？向誰要、誰出錢？','漁業業者之間有沒有可能共享備用電源？需要什麼機制？'],
+      p3: ['停電7天，你的損失和應變策略是什麼？','這次經驗讓你覺得漁電共生場域的電力設計需要哪些改變？','民間能源共享要合法化，你認為最需要修改的法規是什麼？'],
+    }},
+
+];
+
+const PHASES = [
+  { label: '狀況一', sub: '停電12小時',
+    scenario: '中強度颱風重創南部電網，臺南七股、將軍一帶大規模停電（約20–40萬戶）。主幹輸電線倒塌，變電所淹水，區域電網解聯。主幹輸電線修復至少需48–72小時。\n\n部分公民電廠與儲能系統可離網運轉，但多數分散式能源僅為併網型，孤島運轉條件不明、調度權責未確立。',
+    questions: ['民間各角色能立刻啟動什麼？不需要等誰同意？','公民電廠／移動式充電裝置如何快速建立節點？','漁業冷鏈最多能撐多久？在地產業能自救嗎？','哪些事情卡在法規或技術，需要政府出手？','24小時內應做事項為何？'] },
+  { label: '狀況二', sub: '停電三天', scenario: '', questions: [] },
+  { label: '狀況三', sub: '停電七天', scenario: '', questions: [] },
+  { label: '綜合交流', sub: '制度建議', scenario: '', questions: [] },
+];
+
+let myRole = null;
+let lastPhase = -1;
+
+const RESOURCE_CARDS = [
+  // A-01 公民電廠
+  { id: 'sol',    type: 'qty',    name: '屋頂光電',         kwh: 300,  unit: '套', default: 1, desc: '白天自動發電，可開放居民充電。颱風後設備可能受損（嘉義布袋曾有4成損壞）。' },
+  { id: 'bess',   type: 'qty',    name: '社區儲能系統',     kwh: 100,  unit: '套', default: 1, desc: '需孤島授權才能停電後獨立供電。現行設備多為併網型，電網斷電自動解聯。' },
+  // A-02 微電網／儲能業者
+  { id: 'bess2',  type: 'qty',    name: '大型電池儲能',     kwh: 500,  unit: '套', default: 1, desc: '高負載備援，電量消耗後需補充。南鹽光儲能歸台電，民間無法調用。' },
+  { id: 'mg',     type: 'action', name: '微電網控制器',     effect: '啟動後可在30分鐘內切換孤島模式，自動調度本地光電＋儲能＋負載。需技術人員在場操作。', desc: '調度本地電源，本身不儲電。需緊急孤島授權配合。' },
+  // A-03 移動式充電業者
+  { id: 'chg',    type: 'qty',    name: '移動充電樁',       kwh: 60,   unit: '台', default: 3, desc: '停下即可供電，不需固定設施。布袋義竹地勢低窪，颱風後路況可能阻斷，抵達時間不確定。' },
+  { id: 'van',    type: 'qty',    name: '移動儲能車',       kwh: 200,  unit: '台', default: 1, desc: '較大型，可作社區中心長時供電。電用完需外部補充。' },
+  // A-04 在地產業
+  { id: 'solar2', type: 'qty',    name: '漁電共生場域光電', kwh: 60,   unit: '處', default: 1, desc: '颱風後可能受損（嘉義布袋曾有4成損壞）。原設計饋電電網，非本地自用，屬法規灰色地帶。' },
+  { id: 'gen',    type: 'qty',    name: '柴油發電機',       kwh: 1440, unit: '台', default: 1, desc: '啟動快，不需電網。一甲魚塭需6～7台水車維持溶氧，停電24小時虱目魚開始大量死亡。燃料有限，補充需外部協調。' },
+  // B-02 地方政府
+  { id: 'school', type: 'action', name: '學校場地開放令',   effect: '打出後移動充電樁可立即進駐停車場開始供電。七股10所國小＋3所國中，多數距魚塭500公尺內。', desc: '本身不產電，但解鎖充電樁進駐場地。' },
+  { id: 'vulner', type: 'action', name: '脆弱戶優先名單',   effect: '本輪資源分配時，醫療依賴者優先獲得電源。七股65歲以上佔21%，中寮、頂山、大潭里超過25%。', desc: '本身不產電，確保弱勢族群優先供電。' },
+  // B-01 能源主管機關
+  { id: 'auth',   type: 'action', name: '緊急孤島運轉授權', effect: '打出後所有公民電廠、儲能系統可合法切換孤島模式。現行《電業法》無明文程序，發出時間待討論。', desc: '本身不產電，解鎖孤島運轉的法律依據。' },
+];
+
+const ROLE_RESOURCES = {
+  'citizen-plant':    ['sol', 'bess'],
+  'microgrid':        ['bess2', 'mg'],
+  'mobile-charge':    ['chg', 'van', 'ev'],
+  'local-industry':   ['solar2', 'gen'],
+  'local-gov':        ['school', 'vulner'],
+  'energy-authority': ['auth'],
+  'scholar':          [],
+  'community':        [],
+};
+
+function getRoleCards(roleId) {
+  const ids = ROLE_RESOURCES[roleId] || [];
+  return RESOURCE_CARDS.filter(c => ids.includes(c.id));
+}
+
+let selectedResources = {}; // { cardId: qty }
+let customResources = [{ desc: '', kwh: '' }];
+
+function calcTotalKwh() {
+  const presetKwh = Object.entries(selectedResources).reduce((sum, [id, qty]) => {
+    const card = RESOURCE_CARDS.find(c => c.id === id && c.type === 'qty');
+    return sum + (card ? card.kwh * qty : 0);
+  }, 0);
+  const customKwh = customResources.reduce((sum, r) => sum + (Number(r.kwh) || 0), 0);
+  return presetKwh + customKwh;
+}
+
+function renderResourceCards() {
+  const cards = getRoleCards(myRole);
+  const qtyCards = cards.filter(c => c.type === 'qty');
+  const actionCards = cards.filter(c => c.type === 'action');
+
+  const qtySection = qtyCards.length ? `
+    <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:6px">⚡ 電力資源</div>
+    ${qtyCards.map(c => {
+      const sel = selectedResources[c.id] > 0;
+      return `<div class="res-card ${sel ? 'selected' : ''}" id="rescard-${c.id}" onclick="toggleCard('${c.id}')">
+        <div class="res-card-top">
+          <span class="res-card-name">${c.name}</span>
+        </div>
+        <div class="res-card-desc">${c.desc}</div>
+        ${sel ? `<div class="res-card-qty" onclick="event.stopPropagation()">
+          <label>數量（${c.unit}）</label>
+          <input class="qty-input" type="number" min="1" value="${selectedResources[c.id]}" onchange="setQty('${c.id}', this.value)" />
+        </div>` : ''}
+      </div>`;
+    }).join('')}` : '';
+
+  const actionSection = actionCards.length ? `
+    <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin:10px 0 6px">🎴 授權／協調卡</div>
+    ${actionCards.map(c => {
+      const sel = !!selectedResources[c.id];
+      return `<div class="res-card ${sel ? 'selected' : ''}" onclick="toggleAction('${c.id}')" style="cursor:pointer">
+        <div class="res-card-top">
+          <span class="res-card-name">${c.name}</span>
+          <span style="font-size:11px;padding:2px 7px;border-radius:3px;background:${sel ? 'var(--accent)' : 'var(--surface2)'};color:${sel ? '#000' : 'var(--text-dim)'};">${sel ? '✓ 已打出' : '點擊打出'}</span>
+        </div>
+        <div class="res-card-desc">${c.desc}</div>
+        ${sel ? `<div style="margin-top:6px;font-size:12px;color:var(--accent);line-height:1.6;padding:6px 8px;background:var(--accent-dim);border-radius:4px;">效果：${c.effect}</div>` : ''}
+      </div>`;
+    }).join('')}` : '';
+
+  return `
+    <div class="sec-title">可投入的資源</div>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text-dim)">點選你角色擁有的資源；電力資源填數量，授權卡點擊打出</div>
+    ${qtySection}
+    ${actionSection}
+    <div class="res-custom">
+      <div class="res-custom-title">✏️ 自填其他資源</div>
+      ${customResources.map((r, i) => `
+        <div class="res-custom-row">
+          <input type="text" placeholder="描述資源（例：備用柴油發電機）" value="${r.desc}" oninput="setCustom(${i},'desc',this.value)" />
+          <input type="number" placeholder="數量" value="${r.kwh}" oninput="setCustom(${i},'kwh',this.value)" />
+        </div>`).join('')}
+      <button onclick="addCustomRow()" style="font-size:12px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 0">＋ 新增一行</button>
+    </div>`;
+}
+
+function toggleAction(id) {
+  if (selectedResources[id]) {
+    delete selectedResources[id];
+  } else {
+    selectedResources[id] = true;
+  }
+  refreshResourceArea();
+}
+
+function toggleCard(id) {
+  if (selectedResources[id] > 0) {
+    delete selectedResources[id];
+  } else {
+    const card = RESOURCE_CARDS.find(c => c.id === id);
+    selectedResources[id] = card?.default || 1;
+  }
+  refreshResourceArea();
+}
+
+function setQty(id, val) {
+  const n = Math.max(0, Number(val) || 0);
+  if (n === 0) delete selectedResources[id];
+  else selectedResources[id] = n;
+  refreshResourceArea();
+}
+
+function setCustom(i, field, val) {
+  customResources[i][field] = val;
+  document.getElementById('kwhTotal').innerHTML = `目前合計可提供：<strong>${calcTotalKwh().toLocaleString()} kWh</strong>（目標 55,000 kWh／天）`;
+}
+
+function addCustomRow() {
+  customResources.push({ desc: '', kwh: '' });
+  refreshResourceArea();
+}
+
+function refreshResourceArea() {
+  const el = document.getElementById('resourceArea');
+  if (el) el.innerHTML = renderResourceCards();
+}
+
+const getRoleInfo = id => ROLES.find(r => r.id === id) || { icon: '?', name: id, desc: '' };
+
+async function getState() {
+  try {
+    const r = await fetch(FB_URL);
+    const d = await r.json();
+    document.getElementById('connDot').classList.remove('red');
+    if (!d) return { phase: 0, submissions: {}, nextScenario: null, status: 'collecting' };
+    return d;
+  } catch {
+    document.getElementById('connDot').classList.add('red');
+    return null;
+  }
+}
+
+async function putState(s) {
+  await fetch(FB_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(s)
+  });
+}
+
+function renderPhaseStrip(s) {
+  document.getElementById('phaseStrip').innerHTML = PHASES.map((p, i) => `
+    <div class="phase-item ${i===s.phase?'active':i<s.phase?'done':''}">
+      <span class="phase-num">${i+1}</span>${p.label}<br>
+      <span style="font-size:10px;color:${i===s.phase?'rgba(240,165,0,0.7)':'inherit'}">${p.sub}</span>
+    </div>`).join('');
+}
+
+function renderRoleSelect() {
+  document.getElementById('headerStatus').textContent = '請選擇角色';
+  document.getElementById('appContent').innerHTML = `
+    <div class="section-title">選擇你在本次推演中扮演的角色</div>
+    <div class="role-grid">${ROLES.map(r => `
+      <button class="role-btn" onclick="selectRole('${r.id}')">
+        <span class="role-icon">${r.icon}</span>
+        <div class="role-name">${r.name}</div>
+        <div class="role-desc">${r.desc}</div>
+      </button>`).join('')}</div>`;
+}
+
+function selectRole(id) {
+  myRole = id;
+  sessionStorage.setItem('ttx-role', id);
+  getState().then(s => { if (s) renderMain(s); });
+}
+
+function renderMain(s) {
+  const phase = PHASES[s.phase];
+  const ri = getRoleInfo(myRole);
+  const mySub = s.submissions?.[myRole];
+  const subs = s.submissions || {};
+  const subKeys = Object.keys(subs);
+
+  if (lastPhase !== s.phase) lastPhase = s.phase;
+
+  document.getElementById('headerStatus').textContent = `${ri.icon} ${ri.name}`;
+  renderPhaseStrip(s);
+
+  const scenarioText = s.phase === 0 ? phase.scenario : (s.nextScenario || '等待控制組發布情境...');
+  const questions = s.phase === 0 ? phase.questions : [];
+
+  let html = `
+    <div class="scenario-card">
+      <div class="scenario-header">
+        <span class="scenario-tag">${phase.label}</span>
+        <span style="font-size:13px;font-weight:500">${phase.sub}</span>
+      </div>
+      <div class="scenario-body">${scenarioText}</div>
+      ${questions.length ? `<div class="scenario-questions">
+        <div class="q-label">本回合核心問題</div>
+        ${questions.map(q => `<div class="q-item">${q}</div>`).join('')}
+      </div>` : ''}
+    </div>`;
+
+  if (s.phase >= 3) {
+    html += `<div class="final-card"><div class="final-title">推演完成 🎉</div><div class="final-sub">感謝你的參與！<br>請等待控制組進行綜合意見交流。</div></div>`;
+  } else if (!mySub) {
+    const phaseKey = ['p1','p2','p3','p4'][s.phase] || 'p1';
+    const rolePrompts = ri.prompts?.[phaseKey] || [];
+    const resourceInfo = ri.resources || '';
+    html += `
+      <div class="section-title">你的角色資源</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text-muted)">${resourceInfo}</div>
+      <div id="resourceArea">${renderResourceCards()}</div>
+      ${rolePrompts.length ? `
+      <div class="section-title">請在回答中說明以下問題</div>
+      <div style="background:var(--surface);border:1px solid var(--accent-border);border-radius:6px;padding:12px 14px;margin-bottom:16px">
+        ${rolePrompts.map((q,i) => `<div style="font-size:13px;padding:5px 0 5px 12px;border-left:2px solid var(--accent-border);margin-bottom:6px;line-height:1.6;color:var(--text)">${i+1}. ${q}</div>`).join('')}
+      </div>` : ''}
+      <div class="section-title">你的應變決策</div>
+      <div style="margin-bottom:8px;font-size:12px;color:var(--text-dim)">請盡量寫具體數值（kW、kWh、小時、人數等），這樣AI才能判斷是否符合資源限制</div>
+      <div style="margin-bottom:16px">
+        <textarea id="decisionInput" placeholder="說明你打算做什麼、投入多少資源、需要誰的授權、預計花多少時間..." style="min-height:130px"></textarea>
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="submitDecision()">送出決策</button>`;
+  } else {
+    html += `
+      <div class="alert-success">✓ 你的決策已送出，等待其他參演者...</div>
+      <div style="margin-bottom:12px">
+        <button onclick="editDecision()" style="width:100%;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-family:'Noto Sans TC',sans-serif;font-size:13px;cursor:pointer;">✏️ 修改我的決策</button>
+      </div>
+      <div class="waiting-card">
+        <div class="waiting-title">等待所有角色送出決策</div>
+        <div class="waiting-sub">已有 ${subKeys.length} 位參演者送出</div>
+        <div class="players-grid">
+          ${subKeys.map(r => { const i = getRoleInfo(r); return `<div class="player-chip"><div class="chip-dot"></div>${i.icon} ${i.name}</div>`; }).join('')}
+        </div>
+        ${s.nextScenario && s.status === 'next-ready' ? `
+          <div class="next-card">
+            <div class="next-label">▶ 下一回合情境已發布</div>
+            <div class="next-text">${s.nextScenario}</div>
+          </div>` : ''}
+      </div>`;
+  }
+
+  document.getElementById('appContent').innerHTML = html;
+}
+
+async function editDecision() {
+  const s = await getState();
+  if (!s.submissions) return;
+  const prev = s.submissions[myRole]?.text || '';
+  delete s.submissions[myRole];
+  await putState(s);
+  renderMain(s);
+  // restore previous text after render
+  setTimeout(() => {
+    const el = document.getElementById('decisionInput');
+    if (el) { el.value = prev; el.focus(); }
+  }, 50);
+}
+
+async function submitDecision() {
+  const input = document.getElementById('decisionInput')?.value.trim();
+  if (!input) { alert('請輸入你的決策內容'); return; }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '送出中...';
+  const s = await getState();
+  if (!s.submissions) s.submissions = {};
+  const totalKwh = calcTotalKwh();
+  const resourceSummary = [
+    ...Object.entries(selectedResources).map(([id, val]) => {
+      const c = RESOURCE_CARDS.find(r => r.id === id);
+      if (!c) return '';
+      if (c.type === 'qty') return `${c.name} ×${val}（${(c.kwh * val).toLocaleString()} kWh）`;
+      if (c.type === 'action') return `【打出】${c.name}`;
+      return '';
+    }).filter(Boolean),
+    ...customResources.filter(r => r.desc || r.kwh).map(r => `${r.desc || '自填資源'}（${r.kwh || 0} kWh）`)
+  ].join('、');
+  s.submissions[myRole] = {
+    text: input,
+    kwh: totalKwh,
+    resources: resourceSummary,
+    time: Date.now()
+  };
+  await putState(s);
+  renderMain(s);
+}
+
+async function init() {
+  const s = await getState();
+  if (!s) { document.getElementById('appContent').innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-muted)">無法連線，請重新整理頁面</div>`; return; }
+  renderPhaseStrip(s);
+  const saved = sessionStorage.getItem('ttx-role');
+  if (saved) { myRole = saved; renderMain(s); } else renderRoleSelect();
+  setInterval(async () => {
+    const s2 = await getState();
+    if (!s2 || !myRole) return;
+    const active = document.activeElement;
+    const typing = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT');
+    if (typing) return;
+    renderMain(s2);
+  }, POLL_MS);
+}
+
+init();
+</script>
+</body>
+</html>
