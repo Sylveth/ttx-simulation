@@ -66,6 +66,23 @@
   .final-card { background: var(--surface); border: 1px solid var(--accent-border); border-radius: 8px; padding: 32px; text-align: center; }
   .final-title { font-size: 20px; font-weight: 500; color: var(--accent); margin-bottom: 10px; }
   .final-sub { font-size: 13px; color: var(--text-muted); line-height: 1.8; }
+  .res-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .res-card:hover { border-color: var(--border-active); }
+  .res-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .res-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .res-card-name { font-size: 13px; font-weight: 500; }
+  .res-card-kwh { font-size: 12px; color: var(--accent); font-weight: 500; }
+  .res-card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-bottom: 6px; }
+  .res-card-qty { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .res-card-qty label { font-size: 11px; color: var(--text-muted); }
+  .qty-input { width: 60px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 13px; text-align: center; }
+  .qty-input:focus { outline: none; border-color: var(--accent-border); }
+  .res-custom { background: var(--surface); border: 1px dashed var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  .res-custom-title { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .res-custom-row { display: grid; grid-template-columns: 1fr 100px; gap: 8px; margin-bottom: 6px; }
+  .res-custom-row input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 13px; font-family: 'Noto Sans TC', sans-serif; }
+  .res-custom-row input:focus { outline: none; border-color: var(--accent-border); }
+  .kwh-total { font-size: 12px; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 5px; padding: 6px 10px; margin-bottom: 12px; text-align: center; }
 </style>
 </head>
 <body>
@@ -151,6 +168,152 @@ const PHASES = [
 
 let myRole = null;
 let lastPhase = -1;
+
+const RESOURCE_CARDS = [
+  // A-01 公民電廠
+  { id: 'sol',    type: 'qty',    name: '屋頂光電',         kwh: 300,  unit: '套', default: 1, desc: '50kW×6h＝300kWh／套／天。白天自動發電，可開放居民充電。颱風後嘉義布袋曾4成損壞。' },
+  { id: 'bess',   type: 'qty',    name: '社區儲能系統',     kwh: 100,  unit: '套', default: 1, desc: '100kWh／套。需孤島授權才能停電後獨立供電；現行設備多為併網型，電網斷電自動解聯。' },
+  // A-02 微電網／儲能業者
+  { id: 'bess2',  type: 'qty',    name: '大型電池儲能',     kwh: 500,  unit: '套', default: 1, desc: '500kWh／套，高負載下約撐12小時。南鹽光20MWh歸台電，民間無法調用。' },
+  { id: 'mg',     type: 'action', name: '微電網控制器',     effect: '啟動後可在30分鐘內切換孤島模式，自動調度本地光電＋儲能＋負載。需技術人員在場操作。', desc: '調度本地電源，本身不儲電。需緊急孤島授權配合。' },
+  // A-03 移動式充電業者
+  { id: 'chg',    type: 'qty',    name: '移動充電樁',       kwh: 60,   unit: '台', default: 3, desc: '60kWh／台。停下即可供電，不需固定設施。布袋義竹地勢低窪，颱風後路況可能阻斷。' },
+  { id: 'van',    type: 'qty',    name: '移動儲能車',       kwh: 200,  unit: '台', default: 1, desc: '200kWh／台。較大型，可作社區中心長時供電。電用完需外部補充。' },
+  // A-04 在地產業
+  { id: 'solar2', type: 'qty',    name: '漁電共生場域光電', kwh: 60,   unit: '處', default: 1, desc: '颱風後估可用60kWh／處（原100kW，4成損壞風險）。原設計饋電網，非本地自用，法規灰色地帶。' },
+  { id: 'gen',    type: 'qty',    name: '柴油發電機',       kwh: 1440, unit: '台', default: 1, desc: '30kW×48h＝1,440kWh現有燃料／台。一甲魚塭需6～7台水車，停電24h虱目魚開始大量死亡。燃料耗盡需外部協調。' },
+  // B-02 地方政府
+  { id: 'school', type: 'action', name: '學校場地開放令',   effect: '打出後移動充電樁可立即進駐停車場開始供電。七股10所國小＋3所國中，多數距魚塭500公尺內。', desc: '本身不產電，但解鎖充電樁進駐場地。' },
+  { id: 'vulner', type: 'action', name: '脆弱戶優先名單',   effect: '本輪資源分配時，醫療依賴者優先獲得電源。七股65歲以上佔21%（約4,660人），中寮、頂山、大潭里超過25%。', desc: '本身不產電，確保弱勢族群優先供電。' },
+  // B-01 能源主管機關
+  { id: 'auth',   type: 'action', name: '緊急孤島運轉授權', effect: '打出後所有公民電廠、儲能系統可合法切換孤島模式。現行《電業法》無明文程序，發出時間待討論。', desc: '本身不產電，解鎖孤島運轉的法律依據。' },
+];
+
+const ROLE_RESOURCES = {
+  'citizen-plant':    ['sol', 'bess'],
+  'microgrid':        ['bess2', 'mg'],
+  'mobile-charge':    ['chg', 'van', 'ev'],
+  'local-industry':   ['solar2', 'gen'],
+  'local-gov':        ['school', 'vulner'],
+  'energy-authority': ['auth'],
+  'scholar':          [],
+  'community':        [],
+};
+
+function getRoleCards(roleId) {
+  const ids = ROLE_RESOURCES[roleId] || [];
+  return RESOURCE_CARDS.filter(c => ids.includes(c.id));
+}
+
+let selectedResources = {}; // { cardId: qty }
+let customResources = [{ desc: '', kwh: '' }];
+
+function calcTotalKwh() {
+  const presetKwh = Object.entries(selectedResources).reduce((sum, [id, qty]) => {
+    const card = RESOURCE_CARDS.find(c => c.id === id && c.type === 'qty');
+    return sum + (card ? card.kwh * qty : 0);
+  }, 0);
+  const customKwh = customResources.reduce((sum, r) => sum + (Number(r.kwh) || 0), 0);
+  return presetKwh + customKwh;
+}
+
+function renderResourceCards() {
+  const total = calcTotalKwh();
+  const cards = getRoleCards(myRole);
+  const qtyCards = cards.filter(c => c.type === 'qty');
+  const actionCards = cards.filter(c => c.type === 'action');
+
+  const qtySection = qtyCards.length ? `
+    <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:6px">⚡ 電力資源</div>
+    ${qtyCards.map(c => {
+      const sel = selectedResources[c.id] > 0;
+      return `<div class="res-card ${sel ? 'selected' : ''}" id="rescard-${c.id}" onclick="toggleCard('${c.id}')">
+        <div class="res-card-top">
+          <span class="res-card-name">${c.name}</span>
+          <span class="res-card-kwh">${c.kwh} kWh／${c.unit}</span>
+        </div>
+        <div class="res-card-desc">${c.desc}</div>
+        ${sel ? `<div class="res-card-qty" onclick="event.stopPropagation()">
+          <label>數量（${c.unit}）</label>
+          <input class="qty-input" type="number" min="1" value="${selectedResources[c.id]}" onchange="setQty('${c.id}', this.value)" />
+          <span style="font-size:11px;color:var(--accent)">${(c.kwh * (selectedResources[c.id] || 1)).toLocaleString()} kWh</span>
+        </div>` : ''}
+      </div>`;
+    }).join('')}` : '';
+
+  const actionSection = actionCards.length ? `
+    <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.08em;margin:10px 0 6px">🎴 授權／協調卡</div>
+    ${actionCards.map(c => {
+      const sel = !!selectedResources[c.id];
+      return `<div class="res-card ${sel ? 'selected' : ''}" onclick="toggleAction('${c.id}')" style="cursor:pointer">
+        <div class="res-card-top">
+          <span class="res-card-name">${c.name}</span>
+          <span style="font-size:11px;padding:2px 7px;border-radius:3px;background:${sel ? 'var(--accent)' : 'var(--surface2)'};color:${sel ? '#000' : 'var(--text-dim)'};">${sel ? '✓ 已打出' : '點擊打出'}</span>
+        </div>
+        <div class="res-card-desc">${c.desc}</div>
+        ${sel ? `<div style="margin-top:6px;font-size:12px;color:var(--accent);line-height:1.6;padding:6px 8px;background:var(--accent-dim);border-radius:4px;">效果：${c.effect}</div>` : ''}
+      </div>`;
+    }).join('')}` : '';
+
+  return `
+    <div class="sec-title">可投入的資源</div>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text-dim)">點選你角色擁有的資源；電力資源填數量，授權卡點擊打出</div>
+    ${qtySection}
+    ${actionSection}
+    <div class="res-custom">
+      <div class="res-custom-title">✏️ 自填其他資源</div>
+      ${customResources.map((r, i) => `
+        <div class="res-custom-row">
+          <input type="text" placeholder="描述資源（例：備用柴油發電機）" value="${r.desc}" oninput="setCustom(${i},'desc',this.value)" />
+          <input type="number" placeholder="kWh" value="${r.kwh}" oninput="setCustom(${i},'kwh',this.value)" />
+        </div>`).join('')}
+      <button onclick="addCustomRow()" style="font-size:12px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 0">＋ 新增一行</button>
+    </div>
+    <div class="kwh-total" id="kwhTotal">
+      目前合計可提供：<strong>${total.toLocaleString()} kWh</strong>（目標 55,000 kWh／天）
+    </div>`;
+}
+
+function toggleAction(id) {
+  if (selectedResources[id]) {
+    delete selectedResources[id];
+  } else {
+    selectedResources[id] = true;
+  }
+  refreshResourceArea();
+}
+
+function toggleCard(id) {
+  if (selectedResources[id] > 0) {
+    delete selectedResources[id];
+  } else {
+    const card = RESOURCE_CARDS.find(c => c.id === id);
+    selectedResources[id] = card?.default || 1;
+  }
+  refreshResourceArea();
+}
+
+function setQty(id, val) {
+  const n = Math.max(0, Number(val) || 0);
+  if (n === 0) delete selectedResources[id];
+  else selectedResources[id] = n;
+  refreshResourceArea();
+}
+
+function setCustom(i, field, val) {
+  customResources[i][field] = val;
+  document.getElementById('kwhTotal').innerHTML = `目前合計可提供：<strong>${calcTotalKwh().toLocaleString()} kWh</strong>（目標 55,000 kWh／天）`;
+}
+
+function addCustomRow() {
+  customResources.push({ desc: '', kwh: '' });
+  refreshResourceArea();
+}
+
+function refreshResourceArea() {
+  const el = document.getElementById('resourceArea');
+  if (el) el.innerHTML = renderResourceCards();
+}
 
 const getRoleInfo = id => ROLES.find(r => r.id === id) || { icon: '?', name: id, desc: '' };
 
@@ -238,6 +401,7 @@ function renderMain(s) {
     html += `
       <div class="section-title">你的角色資源</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text-muted)">${resourceInfo}</div>
+      <div id="resourceArea">${renderResourceCards()}</div>
       ${rolePrompts.length ? `
       <div class="section-title">請在回答中說明以下問題</div>
       <div style="background:var(--surface);border:1px solid var(--accent-border);border-radius:6px;padding:12px 14px;margin-bottom:16px">
@@ -293,7 +457,23 @@ async function submitDecision() {
   btn.disabled = true; btn.textContent = '送出中...';
   const s = await getState();
   if (!s.submissions) s.submissions = {};
-  s.submissions[myRole] = { text: input, time: Date.now() };
+  const totalKwh = calcTotalKwh();
+  const resourceSummary = [
+    ...Object.entries(selectedResources).map(([id, val]) => {
+      const c = RESOURCE_CARDS.find(r => r.id === id);
+      if (!c) return '';
+      if (c.type === 'qty') return `${c.name} ×${val}（${(c.kwh * val).toLocaleString()} kWh）`;
+      if (c.type === 'action') return `【打出】${c.name}`;
+      return '';
+    }).filter(Boolean),
+    ...customResources.filter(r => r.desc || r.kwh).map(r => `${r.desc || '自填資源'}（${r.kwh || 0} kWh）`)
+  ].join('、');
+  s.submissions[myRole] = {
+    text: input,
+    kwh: totalKwh,
+    resources: resourceSummary,
+    time: Date.now()
+  };
   await putState(s);
   renderMain(s);
 }

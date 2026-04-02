@@ -85,6 +85,16 @@
   .modal-btn-copy { background: var(--purple-dim); border-color: rgba(188,140,255,0.3); color: var(--purple); }
   .modal-btn-open { background: var(--accent); border-color: var(--accent); color: #000; }
   @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } .main-col { border-right: none; border-bottom: 1px solid var(--border); } }
+  .power-bar-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+  .power-bar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .power-bar-title { font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .power-bar-nums { font-size: 13px; font-weight: 500; color: var(--accent); }
+  .power-bar-track { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .power-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.5s ease; }
+  .power-bar-fill.low { background: var(--red); }
+  .power-bar-fill.mid { background: #e6a817; }
+  .power-bar-fill.high { background: var(--green); }
+  .power-bar-sub { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -150,7 +160,20 @@ function render(s, force) {
 function renderMain(s) {
   const subs = s.submissions || {};
   const subEntries = Object.entries(subs);
+  const totalKwh = subEntries.reduce((sum, [, sub]) => sum + (Number(sub.kwh) || 0), 0);
+  const target = 55000;
+  const pct = Math.min(100, Math.round(totalKwh / target * 100));
+  const fillClass = pct < 20 ? 'low' : pct < 60 ? 'mid' : 'high';
+
   let html = `
+    <div class="power-bar-wrap">
+      <div class="power-bar-header">
+        <span class="power-bar-title">電力缺口進度條（日均目標 55,000 kWh）</span>
+        <span class="power-bar-nums">${totalKwh.toLocaleString()} / 55,000 kWh（${pct}%）</span>
+      </div>
+      <div class="power-bar-track"><div class="power-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
+      <div class="power-bar-sub">尚缺 ${Math.max(0, target - totalKwh).toLocaleString()} kWh · 數字來自參演者填報</div>
+    </div>
     <div class="phase-nav">
       ${PHASES.map((p, i) => `<div class="phase-chip ${i===s.phase?'active':i<s.phase?'done':''}" onclick="jumpPhase(${i})">${i+1}. ${p}</div>`).join('')}
     </div>
@@ -163,7 +186,8 @@ function renderMain(s) {
       const t = new Date(sub.time);
       const ts = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
       return `<div class="decision-card">
-        <div class="dc-header"><span>${ri.icon}</span><span class="dc-role">${ri.name}</span><span class="dc-time">${ts}</span></div>
+        <div class="dc-header"><span>${ri.icon}</span><span class="dc-role">${ri.name}</span>${sub.kwh ? `<span style="font-size:11px;color:var(--accent);margin-left:6px">⚡ ${Number(sub.kwh).toLocaleString()} kWh</span>` : ''}<span class="dc-time">${ts}</span></div>
+        ${sub.resources ? `<div style="padding:6px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);line-height:1.6">📦 ${sub.resources}</div>` : ''}
         <div class="dc-body">${sub.text}</div>
       </div>`;
     }).join('');
@@ -211,11 +235,15 @@ function renderSide(s) {
 
 function buildPrompt(s) {
   const subs = Object.entries(s.submissions || {});
-  const decisionsText = subs.map(([id, sub]) => `【${getRoleInfo(id).name}】${sub.text}`).join('\n\n');
+  const decisionsText = subs.map(([id, sub]) => {
+    const resPart = sub.resources ? `\n  投入資源：${sub.resources}` : '';
+    const kwhPart = sub.kwh ? `\n  電力合計：${Number(sub.kwh).toLocaleString()} kWh` : '';
+    return `【${getRoleInfo(id).name}】${kwhPart}${resPart}\n  決策內容：${sub.text}`;
+  }).join('\n\n');
   const nextNames = ['停電三天', '停電七天', '綜合交流'];
   const nextPhase = nextNames[s.phase] || '綜合交流';
   const docContext = uploadedDocs.length > 0
-    ? `\n\n背景參考文件：\n${uploadedDocs.map(d => `【${d.name}】\n${d.text.slice(0, 1500)}`).join('\n\n')}`
+    ? `\n\n背景參考文件：\n${uploadedDocs.map(d => `【${d.name}】\n${d.text.slice(0, 6500)}`).join('\n\n')}`
     : '';
 
   const phaseBackground = {
@@ -237,7 +265,7 @@ function buildPrompt(s) {
 
   return `你是情境模擬工作坊的控制組，請根據以下參演者的決策，生成「${nextPhase}」的情境卡，並檢查數值落差。
 
-研究背景：颱風重創臺南七股、將軍一帶，分散式能源治理困境研究。${docContext}${bgContext}
+研究背景：颱風重創臺南七股、將軍一帶，分散式能源治理困境研究。七股地區日均用電需求約55,000 kWh，本回合參演者合計填報可供電量為 ${Object.values(s.submissions||{}).reduce((sum,sub)=>sum+(Number(sub.kwh)||0),0).toLocaleString()} kWh，距離55,000 kWh目標尚缺 ${Math.max(0,55000-Object.values(s.submissions||{}).reduce((sum,sub)=>sum+(Number(sub.kwh)||0),0)).toLocaleString()} kWh。${docContext}${bgContext}
 
 當前回合：${PHASES[s.phase]}
 參演者決策：
