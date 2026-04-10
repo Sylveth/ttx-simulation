@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>情境模擬推演 — 參演者</title>
+<title>地緣政治下的能源安全 情境模擬工作坊</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -79,15 +79,16 @@
   .qty-input:focus { outline: none; border-color: var(--accent-border); }
   .res-custom { background: var(--surface); border: 1px dashed var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
   .res-custom-title { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-  .res-custom-row { display: grid; grid-template-columns: 1fr 100px; gap: 8px; margin-bottom: 6px; }
+  .res-custom-row { display: grid; grid-template-columns: 1fr 80px 90px; gap: 6px; margin-bottom: 6px; }
   .res-custom-row input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 13px; font-family: 'Noto Sans TC', sans-serif; }
   .res-custom-row input:focus { outline: none; border-color: var(--accent-border); }
+  .res-custom-col-label { font-size: 10px; color: var(--text-dim); text-align: center; margin-bottom: 2px; }
   .kwh-total { font-size: 12px; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 5px; padding: 6px 10px; margin-bottom: 12px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="header">
-  <div class="header-title">颱風停電情境推演</div>
+  <div class="header-title">地緣政治下的能源安全 情境模擬工作坊</div>
   <div class="header-status"><div class="dot" id="connDot"></div><span id="headerStatus">連線中...</span></div>
 </div>
 <div class="phase-strip" id="phaseStrip"></div>
@@ -174,7 +175,7 @@ const RESOURCE_CARDS = [
   { id: 'sol',    type: 'qty',    name: '屋頂光電',         kwh: 300,  unit: '套', default: 1, desc: '白天自動發電，可開放居民充電。颱風後設備可能受損（嘉義布袋曾有4成損壞）。' },
   { id: 'bess',   type: 'qty',    name: '社區儲能系統',     kwh: 100,  unit: '套', default: 1, desc: '需孤島授權才能停電後獨立供電。現行設備多為併網型，電網斷電自動解聯。' },
   // A-02 微電網／儲能業者
-  { id: 'bess2',  type: 'qty',    name: '大型電池儲能',     kwh: 500,  unit: '套', default: 1, desc: '高負載備援，電量消耗後需補充。南鹽光儲能歸台電，民間無法調用。' },
+  { id: 'bess2',  type: 'qty',    name: '大型電池儲能',     kwh: 1000, unit: '套', default: 1, desc: '輕負載備援約8-12小時，電量消耗後需補充。南鹽光儲能歸台電，民間無法調用。' },
   { id: 'mg',     type: 'action', name: '微電網控制器',     effect: '啟動後可在30分鐘內切換孤島模式，自動調度本地光電＋儲能＋負載。需技術人員在場操作。', desc: '調度本地電源，本身不儲電。需緊急孤島授權配合。' },
   // A-03 移動式充電業者
   { id: 'chg',    type: 'qty',    name: '移動充電樁',       kwh: 60,   unit: '台', default: 3, desc: '停下即可供電，不需固定設施。布袋義竹地勢低窪，颱風後路況可能阻斷，抵達時間不確定。' },
@@ -206,7 +207,7 @@ function getRoleCards(roleId) {
 }
 
 let selectedResources = {}; // { cardId: qty }
-let customResources = [{ desc: '', kwh: '' }];
+let customResources = [{ desc: '', qty: '', kwh: '' }];
 
 function calcTotalKwh() {
   const presetKwh = Object.entries(selectedResources).reduce((sum, [id, qty]) => {
@@ -259,10 +260,16 @@ function renderResourceCards() {
     ${actionSection}
     <div class="res-custom">
       <div class="res-custom-title">✏️ 自填其他資源</div>
+      <div class="res-custom-row" style="margin-bottom:2px">
+        <div class="res-custom-col-label">描述資源</div>
+        <div class="res-custom-col-label">數量</div>
+        <div class="res-custom-col-label">kWh</div>
+      </div>
       ${customResources.map((r, i) => `
         <div class="res-custom-row">
-          <input type="text" placeholder="描述資源（例：備用柴油發電機）" value="${r.desc}" oninput="setCustom(${i},'desc',this.value)" />
-          <input type="number" placeholder="數量" value="${r.kwh}" oninput="setCustom(${i},'kwh',this.value)" />
+          <input type="text" placeholder="例：備用柴油發電機" value="${r.desc}" oninput="setCustom(${i},'desc',this.value)" />
+          <input type="number" placeholder="數量" value="${r.qty}" oninput="setCustom(${i},'qty',this.value)" />
+          <input type="number" placeholder="kWh" value="${r.kwh}" oninput="setCustom(${i},'kwh',this.value)" />
         </div>`).join('')}
       <button onclick="addCustomRow()" style="font-size:12px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 0">＋ 新增一行</button>
     </div>`;
@@ -300,7 +307,7 @@ function setCustom(i, field, val) {
 }
 
 function addCustomRow() {
-  customResources.push({ desc: '', kwh: '' });
+  customResources.push({ desc: '', qty: '', kwh: '' });
   refreshResourceArea();
 }
 
@@ -460,7 +467,10 @@ async function submitDecision() {
       if (c.type === 'action') return `【打出】${c.name}`;
       return '';
     }).filter(Boolean),
-    ...customResources.filter(r => r.desc || r.kwh).map(r => `${r.desc || '自填資源'}（${r.kwh || 0} kWh）`)
+    ...customResources.filter(r => r.desc || r.kwh).map(r => {
+      const qtyPart = r.qty ? ` ×${r.qty}` : '';
+      return `${r.desc || '自填資源'}${qtyPart}（${r.kwh || 0} kWh）`;
+    })
   ].join('、');
   s.submissions[myRole] = {
     text: input,
