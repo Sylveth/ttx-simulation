@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>控制組 · 能源安全情境推演</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f8fa;--surface:#fff;--surface2:#f1f3f5;
+  --border:rgba(0,0,0,0.09);--border-s:rgba(0,0,0,0.2);
+  --text:#1a1a2e;--muted:#555770;--dim:#9a9aaa;
+  --accent:#c97b0a;--ad:rgba(201,123,10,0.08);--ab:rgba(201,123,10,0.32);
+  --green:#2a7a3b;--gd:rgba(42,122,59,0.08);--gb2:rgba(42,122,59,0.28);
+  --red:#c0392b;--rd:rgba(192,57,43,0.08);
+  --blue:#2255bb;--bd2:rgba(34,85,187,0.08);
+  --purple:#6b3fa0;--pd:rgba(107,63,160,0.08);
+  --ca:#2255bb;--ca-d:rgba(34,85,187,0.08);--ca-b:rgba(34,85,187,0.28);
+  --cb:#6b3fa0;--cb-d:rgba(107,63,160,0.08);--cb-b:rgba(107,63,160,0.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;font-size:14px}
+.header{padding:11px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(247,248,250,0.97);backdrop-filter:blur(8px);z-index:20;display:flex;align-items:center;gap:9px}
+.h-title{font-family:'Noto Serif TC',serif;font-size:14px;color:var(--accent)}
+.h-badge{font-size:10px;padding:2px 8px;border-radius:3px;background:var(--pd);color:var(--purple);border:1px solid rgba(107,63,160,.28);letter-spacing:.06em}
+.h-live{font-size:11px;color:var(--green);display:flex;align-items:center;gap:5px;margin-left:auto}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.layout{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 47px)}
+.col-l{padding:18px 20px;border-right:1px solid var(--border);overflow-y:auto}
+.col-r{padding:14px 16px;overflow-y:auto;background:var(--bg)}
+.tag{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:500;letter-spacing:.05em;white-space:nowrap}
+.tag-a{background:var(--ca-d);color:var(--ca);border:1px solid var(--ca-b)}
+.tag-b{background:var(--cb-d);color:var(--cb);border:1px solid var(--cb-b)}
+.tag-o{background:var(--ad);color:var(--accent);border:1px solid var(--ab)}
+
+/* group block */
+.group-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.group-block-hd{padding:10px 14px;display:flex;align-items:center;gap:8px}
+.group-block-hd.gpa{background:var(--ca-d);border-bottom:1px solid var(--ca-b)}
+.group-block-hd.gpb{background:var(--cb-d);border-bottom:1px solid var(--cb-b)}
+.group-hd-icon{font-size:16px}
+.group-hd-name{font-size:13px;font-weight:500}
+.group-hd-count{margin-left:auto;font-size:11px;color:var(--muted)}
+
+/* submissions table */
+.sub-table{width:100%;border-collapse:collapse;font-size:12px}
+.sub-table th{padding:6px 8px;background:var(--surface2);color:var(--muted);font-weight:500;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
+.sub-table th.rec-th{width:29%;text-align:left}
+.sub-table th.name-th{width:13%;color:var(--dim)}
+.sub-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.sub-table tr:last-child td{border-bottom:none}
+.sub-table tr.newest td{background:rgba(201,123,10,.04)}
+.sub-table .td-name{font-size:12px;font-weight:500;color:var(--fg);white-space:nowrap}
+.sub-table .td-name.has-data::after{content:'✓';margin-left:4px;font-size:10px;color:var(--green)}
+.sub-table .td-cell{font-size:12px;line-height:1.65;white-space:pre-wrap;color:var(--fg)}
+.sub-table .td-empty{color:var(--dim);font-style:italic}
+.sub-table .rec-hd-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.rec-hd-dot.has{background:var(--green)}.rec-hd-dot.no{background:var(--border)}
+
+/* scenario display */
+.scenario-display{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden}
+.scenario-display-hd{padding:8px 13px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.scenario-display-bd{padding:12px 13px;font-size:13px;line-height:1.8;white-space:pre-wrap}
+
+/* published AI */
+.ai-result{background:var(--surface);border:1px solid rgba(107,63,160,.28);border-radius:7px;overflow:hidden;margin-bottom:14px}
+.ai-result-hd{padding:8px 12px;background:var(--pd);border-bottom:1px solid rgba(107,63,160,.18);font-size:12px;color:var(--purple);font-weight:500;display:flex;align-items:center}
+.ai-result-bd{padding:12px;font-size:13px;line-height:1.8;white-space:pre-wrap}
+
+/* right col */
+.side-sec{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:11px}
+.sec-lbl{font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
+.btn{padding:9px 14px;border-radius:5px;font-family:'Noto Sans TC',sans-serif;font-size:13px;cursor:pointer;border:1px solid;transition:all .12s;width:100%;margin-top:7px;font-weight:400}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#000;font-weight:500}
+.btn-accent:hover{background:#e08c14}
+.btn-accent:disabled{background:var(--surface2);border-color:var(--border);color:var(--dim);cursor:not-allowed}
+.btn-purple{background:var(--pd);border-color:rgba(107,63,160,.28);color:var(--purple)}
+.btn-purple:hover{background:rgba(107,63,160,.14)}
+.btn-purple:disabled{opacity:.5;cursor:not-allowed}
+.btn-green{background:var(--gd);border-color:var(--gb2);color:var(--green)}
+.btn-green:hover{background:rgba(42,122,59,.14)}
+.btn-ghost{background:none;border-color:var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--border-s);color:var(--text)}
+.btn-red{background:var(--rd);border-color:rgba(192,57,43,.28);color:var(--red)}
+.btn-red:hover{background:rgba(192,57,43,.14)}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.btn-grid .btn{margin-top:0}
+textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:9px 11px;color:var(--text);font-family:'Noto Sans TC',sans-serif;font-size:13px;line-height:1.7;resize:vertical;min-height:100px;transition:border-color .12s}
+textarea:focus{outline:none;border-color:var(--ab)}
+textarea::placeholder{color:var(--dim)}
+.char-c{text-align:right;font-size:11px;color:var(--dim);margin-top:2px;margin-bottom:4px}
+.ai-status{font-size:12px;padding:7px 10px;border-radius:4px;margin-top:6px;display:none}
+.ai-status.run{background:var(--bd2);color:var(--blue);border:1px solid rgba(34,85,187,.22);display:block}
+.ai-status.ok{background:var(--gd);color:var(--green);border:1px solid rgba(42,122,59,.22);display:block}
+.ai-status.err{background:var(--rd);color:var(--red);border:1px solid rgba(192,57,43,.22);display:block}
+.ai-status.auto{background:var(--pd);color:var(--purple);border:1px solid rgba(107,63,160,.22);display:block}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.divider{border:none;border-top:1px solid var(--border);margin:9px 0}
+/* AI history */
+.ai-hist-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.ai-hist-hd{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+.ai-hist-time{font-size:11px;color:var(--dim)}
+.ai-hist-badge{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--pd);color:var(--purple);border:1px solid rgba(107,63,160,.22)}
+.ai-hist-pub{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--gd);color:var(--green);border:1px solid rgba(42,122,59,.22)}
+.ai-hist-preview{font-size:12px;color:var(--muted);line-height:1.55;max-height:55px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;margin-bottom:7px;white-space:pre-wrap}
+.ai-hist-actions{display:flex;gap:6px}
+.ahb{padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid;font-family:'Noto Sans TC',sans-serif;transition:all .12s}
+.ahb-view{background:var(--pd);border-color:rgba(107,63,160,.22);color:var(--purple)}
+.ahb-pub{background:var(--gd);border-color:var(--gb2);color:var(--green)}
+.ahb-del{background:none;border-color:var(--border);color:var(--dim)}
+.ahb-del:hover{border-color:rgba(192,57,43,.3);color:var(--red)}
+/* modal */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#1c2128;border:1px solid rgba(255,255,255,.1);border-radius:12px;max-width:580px;width:100%;max-height:80vh;display:flex;flex-direction:column}
+.modal-hd{padding:13px 17px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:13px;color:var(--accent);font-weight:500}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:17px}
+.modal-body{padding:13px 17px;overflow-y:auto;flex:1}
+.modal-pre{font-family:'Noto Sans TC',sans-serif;font-size:12px;line-height:1.7;color:#c9d1d9;white-space:pre-wrap;word-break:break-word}
+.modal-ft{padding:10px 17px;border-top:1px solid rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.modal-btn{padding:9px;border-radius:5px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;text-align:center;text-decoration:none;display:block;border:1px solid}
+.mb-copy{background:var(--pd);border-color:rgba(107,63,160,.28);color:var(--purple)}
+.mb-open{background:var(--accent);border-color:var(--accent);color:#000}
+/* upload */
+.upload-zone{border:1px dashed rgba(107,63,160,.3);border-radius:6px;padding:11px;text-align:center;cursor:pointer;transition:all .12s}
+.upload-zone:hover{border-color:var(--purple);background:var(--pd)}
+.upload-zone input{display:none}
+.file-chip{display:flex;align-items:center;gap:7px;padding:5px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:5px;font-size:12px}
+.file-chip-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-rm{color:var(--dim);cursor:pointer}
+.file-rm:hover{color:var(--red)}
+/* phase pills */
+.phase-row{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+.phase-pill{font-size:11px;padding:4px 11px;border-radius:12px;border:1px solid var(--border);color:var(--dim)}
+.phase-pill.cur{background:var(--ad);border-color:var(--ab);color:var(--accent);font-weight:500}
+.phase-pill.done{background:var(--gd);border-color:var(--gb2);color:var(--green)}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.col-l{border-right:none}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="h-title">地緣政治下的能源安全</div>
+  <span class="h-badge">控制組</span>
+  <div class="h-live"><div class="dot"></div><span id="liveLabel">讀取中...</span></div>
+</div>
+<div class="layout">
+  <div class="col-l" id="colL"><div style="color:var(--dim);padding:40px;text-align:center">載入中...</div></div>
+  <div class="col-r" id="colR"></div>
+</div>
+
+<script>
+const FB = 'https://ttxproject-382cf-default-rtdb.asia-southeast1.firebasedatabase.app/ttx-session-v3.json';
+const POLL = 2500;
+
+async function getState(){ try{ const r=await fetch(FB+'?_='+Date.now(),{cache:'no-store'}); return await r.json()||defaultState(); }catch{ return null; } }
+async function putState(s){ await fetch(FB,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)}); }
+function defaultState(){ return {phase:1,submissions:{},scenario:'',aiSummary:null,aiHistory:[]}; }
+
+const GROUPS = {
+  a:{ key:'a', name:'技術解方', icon:'⚙️', cls:'gpa', tag:'tag-a' },
+  b:{ key:'b', name:'社會網絡', icon:'🏛️', cls:'gpb', tag:'tag-b' },
+};
+const MEMBERS = {
+  a:['顏哲淵','余宸瑋','劉家銘','呂學儒','李孟穎','羅慶權','郭錦程','鄭智文','陳正一','黃偉哲'],
+  b:['侯家楷','侯彥隆','徐立基','杜威達','潘旻真','許仁澤','黃品涵','黃龍冠','阿布娪','林彥廷'],
+};
+const REC_ROLES = {
+  a:['電力資源調度的結論','電力調度過程中的障礙'],
+  b:['滿足不同區域電力需求的優先順序與決策考量','協調相關電力資源與電力需求時遇到的障礙'],
+};
+const PHASE_LABELS=['','情境一：停電12小時','情境二：停電三天','情境三：停電七天','尾聲'];
+
+let uploadedDocs=[], proxyOnline=false;
+let lastSubCount=-1, autoAILock=false, lastRenderState=null, lastHash='';
+
+/* ── Proxy ── */
+async function checkProxy(){
+  try{ const r=await fetch('http://localhost:3333/ping',{signal:AbortSignal.timeout(600)}); proxyOnline=r.ok; }
+  catch{ proxyOnline=false; }
+}
+
+/* ── AI ── */
+async function callAI(prompt){
+  const key=sessionStorage.getItem('ttx-api-key')||'';
+  setAISt('run','');
+  if(proxyOnline){
+    try{
+      const r=await fetch('http://localhost:3333/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,prompt,maxTokens:1400})});
+      if(r.ok){ const d=await r.json(); const t=d?.content?.[0]?.text; if(t){ setAISt('ok','✓ AI 回應完成'); return t; } setAISt('err',`錯誤：${d?.error?.message||'未知'}`); return null; }
+    }catch(e){ setAISt('err',`失敗：${e.message}`); }
+  }
+  setAISt('',''); showCopyModal(prompt); return null;
+}
+function setAISt(type,msg){
+  const el=document.getElementById('aiStatus'); if(!el) return;
+  el.className='ai-status'+(type?' '+type:'');
+  el.innerHTML=type==='run'?`<span class="spin"></span>AI 生成中...`:msg;
+}
+
+async function autoRunAI(s){
+  if(autoAILock) return; autoAILock=true;
+  const el=document.getElementById('aiStatus');
+  if(el){ el.className='ai-status auto'; el.innerHTML='<span class="spin" style="border-top-color:var(--purple)"></span>偵測到新記錄，自動生成分析中...'; }
+  try{
+    const res=await callAI(buildAnalysisPrompt(s));
+    if(res){
+      const fresh=await getState();
+      if(!fresh.aiHistory) fresh.aiHistory=[];
+      fresh.aiHistory.unshift({id:Date.now(),text:res,timestamp:Date.now(),phase:s.phase,subCount:Object.keys(s.submissions||{}).length,published:false});
+      if(fresh.aiHistory.length>50) fresh.aiHistory=fresh.aiHistory.slice(0,50);
+      await putState(fresh); render(fresh,false);
+      if(el){ el.className='ai-status ok'; el.innerHTML='✓ 分析完成，請確認後發布'; }
+    }
+  }catch(e){
+    if(el){ el.className='ai-status err'; el.innerHTML=`⚠ 分析失敗：${e.message}`; }
+  }finally{ autoAILock=false; }
+}
+
+/* ── Prompts ── */
+const LOCAL_KNOWLEDGE=`
+【七股在地知識】
+- 深水養殖需持續增氧，停電數小時即大量死亡；淺坪養殖耐受性較強
+- 七股無在地冷凍廠，冷鏈依賴外部物流
+- 廟宇（42座）是非正式集會與資訊傳遞中心
+- 65歲以上超過21%，緊急動員能力有限
+- 七股饋線容量不足，孤島供電受制約
+`;
+
+function buildAnalysisPrompt(s){
+  const fmtGroup=(gk)=>{
+    const lines=[];
+    MEMBERS[gk].forEach(name=>{
+      const responses=[1,2]
+        .filter(n=>s.submissions?.[`${gk}-${n}`]?.data?.[name])
+        .map(n=>`  ${REC_ROLES[gk][n-1]}：${s.submissions[`${gk}-${n}`].data[name]}`);
+      if(responses.length) lines.push(`【${name}】\n${responses.join('\n')}`);
+    });
+    return lines.length?lines.join('\n\n'):'（尚無記錄）';
+  };
+  const aCount=[1,2].filter(n=>s.submissions?.[`a-${n}`]).length;
+  const bCount=[1,2].filter(n=>s.submissions?.[`b-${n}`]).length;
+  return `你是能源安全情境推演工作坊的引導員。以下是「${PHASE_LABELS[s.phase]||''}」回合的記錄。
+${LOCAL_KNOWLEDGE}
+本回合情境：${s.scenario||'（尚無情境）'}
+
+【技術解方組記錄】（${aCount}位記錄員已送出）
+${fmtGroup('a')}
+
+【社會網絡組記錄】（${bCount}位記錄員已送出）
+${fmtGroup('b')}
+
+請提供一份給所有參演者看的分析摘要（繁體中文）：
+
+**本回合關鍵觀察**
+- 兩組之間的行動策略有何差異或互補？
+- 哪些決策出現了協同，哪些出現了衝突或卡關？
+- 哪些法規、授權或資訊瓶頸影響了行動？
+
+**尚待解決的核心問題**
+列出 2–3 個最重要的未解問題，供下一輪討論。
+
+**距離完整回應還差多遠？**
+針對本回合，評估兩組回答的完整度（0–100%），並具體說明：
+- 目前回答已涵蓋哪些面向
+- 明顯缺少或未提到哪些關鍵內容
+- 若要達到100%，最需要補充的 1–2 件事
+
+語氣客觀中立，幫助參演者看見整體動態。`;
+}
+
+function buildScenarioPrompt(s){
+  const fmtGroup=(gk)=>{
+    const lines=[];
+    MEMBERS[gk].forEach(name=>{
+      const texts=[1,2]
+        .filter(n=>s.submissions?.[`${gk}-${n}`]?.data?.[name])
+        .map(n=>s.submissions[`${gk}-${n}`].data[name]);
+      if(texts.length) lines.push(`${name}：${texts.join('／')}`);
+    });
+    return lines.length?lines.join('\n'):'（尚無記錄）';
+  };
+  const nextLabels={1:'情境二（停電第三天）',2:'情境三（停電第七天）',3:'尾聲'};
+  const docCtx=uploadedDocs.length?`\n參考文件：\n${uploadedDocs.map(d=>`【${d.name}】\n${d.text.slice(0,4000)}`).join('\n\n')}`:'' ;
+  return `你扮演「颱風重創後的複合災情系統」，根據兩組的行動策略模擬災情演進。
+${LOCAL_KNOWLEDGE}
+當前回合：${PHASE_LABELS[s.phase]||''}${docCtx}
+
+【技術解方組】
+${fmtGroup('a')}
+
+【社會網絡組】
+${fmtGroup('b')}
+
+請生成「${nextLabels[s.phase]||'下一個狀況'}」情境卡（150–200字）：
+
+✅ 已緩解：[哪些行動發揮效果，哪些壓力獲得緩解]
+
+⚠️ 新發展：[因災情演進或決策後遺效應，描述新出現的壓力點]
+
+語氣簡潔，繁體中文，像真實災情通報。`;
+}
+
+/* ── Modal ── */
+function showCopyModal(prompt){
+  const m=document.createElement('div'); m.className='modal-ov';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-hd"><span class="modal-title">複製 Prompt → 貼到 Claude</span><button class="modal-close" onclick="this.closest('.modal-ov').remove()">✕</button></div>
+    <div class="modal-body"><pre class="modal-pre">${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</pre></div>
+    <div class="modal-ft">
+      <button class="modal-btn mb-copy" id="mcBtn" onclick="mCopy()">📋 複製 Prompt</button>
+      <a class="modal-btn mb-open" href="https://claude.ai/new" target="_blank">開啟 Claude ↗</a>
+    </div>
+  </div>`;
+  document.body.appendChild(m); window._mp=prompt;
+}
+async function mCopy(){ try{ await navigator.clipboard.writeText(window._mp||''); const b=document.getElementById('mcBtn'); b.textContent='✓ 已複製！'; setTimeout(()=>b.textContent='📋 複製 Prompt',2000); }catch{ alert('請手動選取複製'); } }
+
+/* ── Actions ── */
+async function startRound(phase){
+  const val=document.getElementById('scenarioComposer')?.value.trim()||'';
+  if(!val){ alert('請先填寫本回合情境'); return; }
+  if(!confirm(`確定開始${PHASE_LABELS[phase]}？目前的記錄將清除。`)) return;
+  const s=await getState();
+  s.phase=phase; s.submissions={}; s.aiSummary=null;
+  if(val) s.scenario=val;
+  lastSubCount=0;
+  await putState(s); render(s,true);
+}
+
+async function endSession(){
+  if(!confirm('確定結束推演？')) return;
+  const s=await getState(); s.phase=4; await putState(s); render(s,true);
+}
+
+
+async function generateScenario(){
+  const s=await getState();
+  if(!Object.keys(s.submissions||{}).length){ alert('尚無記錄'); return; }
+  const res=await callAI(buildScenarioPrompt(s));
+  if(res){ const el=document.getElementById('scenarioComposer'); if(el){ el.value=res; upCount('scCount',el); } setAISt('ok','✓ 情境卡已生成'); }
+}
+
+async function generateAnalysis(){
+  const s=await getState();
+  if(!Object.keys(s.submissions||{}).length){ alert('尚無記錄'); return; }
+  const res=await callAI(buildAnalysisPrompt(s));
+  if(res){
+    const fresh=await getState();
+    if(!fresh.aiHistory) fresh.aiHistory=[];
+    fresh.aiHistory.unshift({id:Date.now(),text:res,timestamp:Date.now(),phase:fresh.phase,subCount:Object.keys(fresh.submissions||{}).length,published:false});
+    if(fresh.aiHistory.length>50) fresh.aiHistory=fresh.aiHistory.slice(0,50);
+    await putState(fresh); render(fresh,false);
+    setAISt('ok','✓ 分析已加入佇列，請確認後發布');
+  }
+}
+
+async function publishFromHistory(id){
+  const s=await getState();
+  const entry=(s.aiHistory||[]).find(e=>e.id===id); if(!entry) return;
+  s.aiSummary=entry.text;
+  s.aiHistory=(s.aiHistory||[]).map(e=>e.id===id?{...e,published:true}:e);
+  await putState(s); render(s,false);
+  setAISt('ok','✓ 已發布給所有參演者');
+}
+
+async function unpublish(){ const s=await getState(); s.aiSummary=null; await putState(s); render(s,false); }
+
+async function deleteFromHistory(id){
+  if(!confirm('確定刪除？')) return;
+  const s=await getState(); s.aiHistory=(s.aiHistory||[]).filter(e=>e.id!==id);
+  await putState(s); render(s,false);
+}
+
+function viewHistoryItem(id){
+  const s=lastRenderState;
+  const entry=(s?.aiHistory||[]).find(e=>e.id===id); if(!entry) return;
+  const ts=new Date(entry.timestamp);
+  const timeStr=`${ts.getHours().toString().padStart(2,'0')}:${ts.getMinutes().toString().padStart(2,'0')}`;
+  const m=document.createElement('div'); m.className='modal-ov';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-hd">
+      <span class="modal-title">AI 分析 · ${PHASE_LABELS[entry.phase]||''} · ${timeStr} · ${entry.subCount}筆</span>
+      <button class="modal-close" onclick="this.closest('.modal-ov').remove()">✕</button>
+    </div>
+    <div class="modal-body"><pre class="modal-pre">${entry.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</pre></div>
+    <div class="modal-ft">
+      <button class="modal-btn mb-copy" onclick="navigator.clipboard.writeText(${JSON.stringify(entry.text)}).then(()=>this.textContent='✓ 複製！').catch(()=>{})">📋 複製</button>
+      <button class="modal-btn mb-open" onclick="publishFromHistory(${id});this.closest('.modal-ov').remove()">📢 發布給所有人</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function resetSession(){
+  if(!confirm('確定重置？所有資料將清除。')) return;
+  await putState(defaultState()); lastSubCount=0;
+  render(await getState(),true);
+}
+
+function upCount(id,el){ const c=document.getElementById(id); if(c) c.textContent=`${el.value.length} 字`; }
+
+/* ── Render ── */
+function isTyping(){ const a=document.activeElement; return a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'); }
+
+function countFilled(s){
+  return Object.values(GROUPS).reduce((sum,g)=>
+    sum+[1,2].filter(n=>s.submissions?.[`${g.key}-${n}`]).length, 0);
+}
+function totalRecs(){ return Object.keys(GROUPS).length*2; }
+
+function render(s,force){
+  lastRenderState=s;
+  const subCount=Object.keys(s.submissions||{}).length;
+  const histCount=(s.aiHistory||[]).length;
+  const filled=countFilled(s);
+  document.getElementById('liveLabel').textContent=`${filled}/${totalRecs()} 記錄員已送出 · ${PHASE_LABELS[s.phase]||''} · ${histCount}筆AI`;
+  renderLeft(s);
+  if(force||!isTyping()) renderRight(s);
+}
+
+function renderLeft(s){
+  const subs=s.submissions||{};
+  const phase=s.phase;
+  let html='';
+
+  // Phase row (skip index 0 placeholder)
+  html+=`<div class="phase-row">${PHASE_LABELS.slice(1).map((lbl,i)=>{
+    const idx=i+1;
+    const cls=idx<phase?'done':idx===phase?'cur':'';
+    return `<div class="phase-pill ${cls}">${lbl}</div>`;
+  }).join('')}</div>`;
+
+  // Scenario
+  if(s.scenario && phase>0){
+    html+=`<div class="scenario-display"><div class="scenario-display-hd"><span class="tag tag-o">${PHASE_LABELS[phase]||''}</span>當前情境</div><div class="scenario-display-bd">${s.scenario}</div></div>`;
+  }
+
+  // Published AI
+  if(s.aiSummary){
+    html+=`<div class="ai-result"><div class="ai-result-hd">✦ 已發布 AI 分析 <button onclick="unpublish()" style="margin-left:auto;background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Noto Sans TC',sans-serif">撤回</button></div><div class="ai-result-bd">${s.aiSummary}</div></div>`;
+  }
+
+  // Groups — per-member view
+  const latestTime = Math.max(...Object.values(subs).map(s=>s.time||0), 0);
+
+  Object.values(GROUPS).forEach(g=>{
+    const gk=g.key;
+    const recSubs=[1,2].map(n=>({n,sub:subs[`${gk}-${n}`]}));
+    const filledRec=recSubs.filter(r=>r.sub).length;
+    html+=`<div class="group-block">
+      <div class="group-block-hd ${g.cls}">
+        <span class="group-hd-icon">${g.icon}</span>
+        <span class="group-hd-name">${g.name}</span>
+        <span class="group-hd-count">${filledRec}/2 記錄員</span>
+      </div>
+      <table class="sub-table">
+        <thead><tr>
+          <th class="name-th">成員</th>
+          ${recSubs.map(r=>`<th class="rec-th"><span class="rec-hd-dot ${r.sub?'has':'no'}"></span>${REC_ROLES[gk][r.n-1]}</th>`).join('')}
+        </tr></thead>
+        <tbody>`;
+    MEMBERS[gk].forEach(name=>{
+      const cells=recSubs.map(r=>{
+        const text=r.sub?.data?.[name];
+        return text
+          ?`<td class="td-cell">${text}</td>`
+          :`<td class="td-empty">—</td>`;
+      });
+      const hasAny=recSubs.some(r=>r.sub?.data?.[name]);
+      const isNewest=recSubs.some(r=>r.sub?.data?.[name]&&r.sub?.time===latestTime);
+      html+=`<tr${isNewest?' class="newest"':''}>
+        <td class="td-name${hasAny?' has-data':''}">${name}</td>
+        ${cells.join('')}
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+
+
+  if(phase>=4) html+=`<div style="text-align:center;padding:20px;font-size:14px;color:var(--muted)">推演已結束</div>`;
+  document.getElementById('colL').innerHTML=html;
+}
+
+function renderAIHistory(s){
+  const history=s.aiHistory||[];
+  if(!history.length) return `<div style="font-size:12px;color:var(--dim);padding:8px 0;text-align:center">尚無紀錄</div>`;
+  return history.map(entry=>{
+    const ts=new Date(entry.timestamp);
+    const timeStr=`${ts.getHours().toString().padStart(2,'0')}:${ts.getMinutes().toString().padStart(2,'0')}`;
+    return `<div class="ai-hist-item">
+      <div class="ai-hist-hd">
+        <span class="ai-hist-time">${timeStr}</span>
+        <span class="ai-hist-badge">${PHASE_LABELS[entry.phase]||''} · ${entry.subCount}筆</span>
+        ${entry.published?'<span class="ai-hist-pub">✓ 已發布</span>':''}
+      </div>
+      <div class="ai-hist-preview">${entry.text}</div>
+      <div class="ai-hist-actions">
+        <button class="ahb ahb-view" onclick="viewHistoryItem(${entry.id})">查看全文</button>
+        ${!entry.published?`<button class="ahb ahb-pub" onclick="publishFromHistory(${entry.id})">📢 發布</button>`:''}
+        <button class="ahb ahb-del" onclick="deleteFromHistory(${entry.id})">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRight(s){
+  const phase=s.phase;
+  const subCount=Object.keys(s.submissions||{}).length;
+  const composerVal=document.getElementById('scenarioComposer')?.value??s.scenario??'';
+
+  let flowBtn='';
+  if(phase>=1&&phase<=2){
+    flowBtn=`<button class="btn btn-accent" onclick="startRound(${phase+1})" ${subCount===0?'disabled':''}>→ 發布${PHASE_LABELS[phase+1]}，進入下一輪</button>`;
+  } else if(phase===3){
+    flowBtn=`<button class="btn btn-accent" onclick="endSession()">→ 結束推演，進入尾聲</button>`;
+  }
+
+  // Submission progress grid
+  const progressGrid = Object.values(GROUPS).map(g=>{
+    const recCount=[1,2].filter(n=>s.submissions?.[`${g.key}-${n}`]).length;
+    const memberCount=MEMBERS[g.key].filter(name=>[1,2].some(n=>s.submissions?.[`${g.key}-${n}`]?.data?.[name])).length;
+    return `<div style="background:var(--surface2);border-radius:5px;padding:7px;text-align:center;border:1px solid var(--border)">
+      <div style="font-size:16px">${g.icon}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${g.name}</div>
+      <div style="font-size:15px;font-weight:600;color:${recCount>0?'var(--accent)':'var(--dim)'};margin-top:1px">${memberCount}<span style="font-size:10px;font-weight:400;color:var(--dim)">/${MEMBERS[g.key].length}人</span></div>
+      <div style="font-size:10px;color:var(--dim);margin-top:1px">${recCount}/2 記錄員</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('colR').innerHTML=`
+    <div class="side-sec">
+      <div class="sec-lbl">流程控制 <span class="tag tag-o">${PHASE_LABELS[phase]||''}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        ${progressGrid}
+      </div>
+      ${flowBtn}
+    </div>
+
+    <div class="side-sec">
+      <div class="sec-lbl">AI 分析佇列 <span style="font-size:11px;color:var(--purple)">${(s.aiHistory||[]).length}筆 · 自動生成</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:6px 9px;background:rgba(107,63,160,.05);border-radius:4px;border:1px solid rgba(107,63,160,.14);line-height:1.5">
+        有新記錄送出時自動生成，確認後點「發布」才推送。
+      </div>
+      <div class="ai-status" id="aiStatus"></div>
+      <div id="aiHistoryList">${renderAIHistory(s)}</div>
+      <div class="btn-grid" style="margin-top:8px">
+        <button class="btn btn-ghost" style="margin-top:0;font-size:12px" onclick="copyAnalysisPrompt()">📋 複製 Prompt</button>
+        <button class="btn btn-purple" style="margin-top:0" onclick="generateAnalysis()" ${subCount===0?'disabled':''}>✦ 手動生成</button>
+      </div>
+    </div>
+
+    <div class="side-sec">
+      <div class="sec-lbl">情境內容</div>
+      <textarea id="scenarioComposer" placeholder="手動輸入，或點「AI 生成」自動產生..." style="min-height:80px" oninput="upCount('scCount',this)">${composerVal}</textarea>
+      <div class="char-c" id="scCount">${composerVal.length} 字</div>
+      <div class="btn-grid">
+        <button class="btn btn-ghost" style="margin-top:0;font-size:12px" onclick="copyScenarioPrompt()">📋 複製 Prompt</button>
+        <button class="btn btn-purple" style="margin-top:0" onclick="generateScenario()" ${subCount===0?'disabled':''}>✦ AI 生成</button>
+      </div>
+    </div>
+
+    <div class="side-sec">
+      <div class="sec-lbl">背景資料文件</div>
+      <div class="upload-zone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault()" ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt" multiple onchange="handleFiles(this.files)">
+        <div style="font-size:18px;margin-bottom:3px">📄</div>
+        <div style="font-size:12px;color:var(--muted)">拖曳或點擊上傳 · PDF、Word、TXT</div>
+      </div>
+      <div id="fileList">${renderFileList()}</div>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-red" onclick="resetSession()">⟳ 重置整場推演</button>`;
+}
+
+async function copyScenarioPrompt(){ const s=await getState(); const p=buildScenarioPrompt(s); try{ await navigator.clipboard.writeText(p); alert('✓ 已複製！'); }catch{ showCopyModal(p); } }
+async function copyAnalysisPrompt(){ const s=await getState(); const p=buildAnalysisPrompt(s); try{ await navigator.clipboard.writeText(p); alert('✓ 已複製！'); }catch{ showCopyModal(p); } }
+
+function renderFileList(){ return uploadedDocs.map((d,i)=>`<div class="file-chip"><span>📄</span><span class="file-chip-name">${d.name}</span><span style="font-size:11px;color:${d.text?'var(--green)':'var(--dim)'}">${d.text?'✓':'...'}</span><span class="file-rm" onclick="uploadedDocs.splice(${i},1);document.getElementById('fileList').innerHTML=renderFileList()">✕</span></div>`).join(''); }
+async function handleFiles(files){
+  for(const file of files){
+    const idx=uploadedDocs.length; uploadedDocs.push({name:file.name,text:''});
+    document.getElementById('fileList').innerHTML=renderFileList();
+    try{
+      const n=file.name.toLowerCase();
+      if(n.endsWith('.txt')) uploadedDocs[idx].text=await file.text();
+      else if(n.endsWith('.pdf')){ uploadedDocs[idx].text='[PDF已上傳]'; }
+      else if(n.endsWith('.docx')){ const res=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()}); uploadedDocs[idx].text=res.value; }
+    }catch{ uploadedDocs[idx].text='[讀取失敗]'; }
+    document.getElementById('fileList').innerHTML=renderFileList();
+  }
+}
+
+/* ── Poll & init ── */
+async function poll(){
+  try{
+    const s=await getState(); if(!s) return;
+    const subCount=Object.keys(s.submissions||{}).length;
+    if(lastSubCount>=0 && subCount>lastSubCount && s.phase>0 && !autoAILock) autoRunAI(s);
+    lastSubCount=subCount;
+    const h=JSON.stringify({ph:s.phase,subs:s.submissions,ai:s.aiSummary,hist:(s.aiHistory||[]).map(e=>e.id)});
+    if(h===lastHash) return; lastHash=h; render(s,false);
+  }catch(e){ console.warn('poll error',e); }
+}
+
+async function init(){
+  const s=await getState();
+  if(!s){ document.getElementById('colL').innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">⚠️ 無法連線 Firebase</div>'; return; }
+  lastSubCount=Object.keys(s.submissions||{}).length;
+  render(s,true); checkProxy();
+  setInterval(poll,POLL);
+}
+init();
+</script>
+</body>
+</html>
